@@ -1,4 +1,33 @@
-# Stable Diffusion WebUI Canvas Editor
+# Stable Diffusion WebUI Canvas Editor (Forge Neo fork)
+
+> A Polotno-based canvas editor tab for **Stable Diffusion Forge Neo** — compose images, layers, text and elements, then send the result to img2img / inpaint / ControlNet (or pull your generated images back into the canvas as a library).
+
+This is a fork of [jtydhr88/sd-canvas-editor](https://github.com/jtydhr88/sd-canvas-editor) (thanks @jtydhr88 for the original work!), ported and fixed for **Stable Diffusion Forge Neo** (Gradio 4.x).
+
+## Why this fork?
+
+The original extension breaks on modern Gradio 4.x (used by Forge Neo) for two reasons:
+
+1. **It doesn't even load** — `scripts/main.py` annotates its helpers with `gr.components.IOComponent`, an internal Gradio 3.x class that no longer exists. The whole script dies at import, so the *Canvas Editor* tab never appears.
+2. **Its UI hooks target Gradio 3 DOM** — Forge Neo replaces the img2img/inpaint image boxes (and the ControlNet unit image inputs) with its own canvas widget, and Gradio 4 renders tabs differently, so the "Send to …" buttons would crash or silently no-op.
+
+This fork:
+
+1. Replaces the Gradio 3-only type annotation with a lazy `'gr.components.Component'` annotation, so the tab registers on Gradio 3 *and* Gradio 4.
+2. Makes the image injection work on **both** worlds:
+   - standard Gradio image components (`div[data-testid="image"]` + `Clear` button) — original A1111 behavior kept;
+   - Forge's custom canvas widget (`.forge-container`, `imageInput_<uuid>` / `removeButton_<uuid>`).
+3. Targets Forge's ControlNet unit image blocks by their deterministic ids (`<tab>_controlnet_ControlNet-<n>_input_image`), with the original accordion-scan logic kept as fallback.
+4. Switches to the Canvas Editor tab via the tab button's `aria-controls` attribute (position-based math kept as fallback for older Gradio).
+5. Wires the "Send to Canvas Editor" gallery buttons to the gallery components by DOM id (`#txt2img_gallery`, …), which the upstream `window.*_gallery` globals never actually provided.
+
+Tested on Forge Neo (branch `neo`, Gradio 4.40, Python 3.13): tab renders, Polotno canvas works, and all send-to flows (img2img, inpaint, ControlNet unit, gallery → canvas) verified live.
+
+![Canvas Editor tab on Forge Neo](doc/images/forge-neo.png)
+
+**Known limitation (upstream, not forge-specific):** the Polotno *Photos* panel's Unsplash stock grid fails to load ("Loading is failed..."). Everything else in the editor works; upload your own images via *Upload* or use the local *Txt2img* / *Img2img* library panels.
+
+## Original README
 A custom extension for [AUTOMATIC1111/stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) that integrated a full capability canvas editor which you can use layer, text, image, elements and so on, then send image to or receive image from img2img/inpaint or send image to ContronNet, basing on [Polotno](https://polotno.com/).  
 ![1.png](doc/images/overall.png)
 ![controlnet.png](doc/images/controlnet.png)
