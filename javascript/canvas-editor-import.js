@@ -37,14 +37,20 @@
 
     onUiLoaded(function () {
         canvasEditorImport = gradioApp().querySelector('#canvas-editor-import');
-        load(canvasEditorImport);
+        if (canvasEditorImport) {
+            load(canvasEditorImport);
+        }
 
-        createSendToCanvasEditorButton("image_buttons_txt2img", window.txt2img_gallery);
-        createSendToCanvasEditorButton("image_buttons_img2img", window.img2img_gallery);
-        createSendToCanvasEditorButton("image_buttons_extras", window.extras_gallery);
+        // In A1111 the gallery components are not exposed on window; fall back to the DOM ids.
+        createSendToCanvasEditorButton("image_buttons_txt2img", window.txt2img_gallery || gradioApp().querySelector('#txt2img_gallery'));
+        createSendToCanvasEditorButton("image_buttons_img2img", window.img2img_gallery || gradioApp().querySelector('#img2img_gallery'));
+        createSendToCanvasEditorButton("image_buttons_extras", window.extras_gallery || gradioApp().querySelector('#extras_gallery'));
 
         function createSendToCanvasEditorButton(queryId, gallery) {
             const existingButton = gradioApp().querySelector(`#${queryId} button`);
+            if (!existingButton) {
+                return;
+            }
             const newButton = existingButton.cloneNode(true);
             newButton.style.display = "flex";
             newButton.id = `${queryId}_send_to_canvasEditor`;

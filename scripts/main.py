@@ -93,7 +93,7 @@ def js2py(
         name: str,
         id: Callable[[str], str],
         js: Callable[[str], str],
-        sink: gr.components.IOComponent,
+        sink: 'gr.components.Component',
 ) -> gr.Textbox:
     v_set = gr.Button(elem_id=id(f'{name}_set'))
     v = gr.Textbox(elem_id=id(name))
@@ -108,7 +108,7 @@ def py2js(
         fn: Callable[[], str],
         id: Callable[[str], str],
         js: Callable[[str], str],
-        sink: gr.components.IOComponent,
+        sink: 'gr.components.Component',
 ) -> None:
     v_fire = gr.Button(elem_id=id(f'{name}_get'))
     v_sink = gr.Textbox()
@@ -122,7 +122,7 @@ def jscall(
         fn: Callable[[str], str],
         id: Callable[[str], str],
         js: Callable[[str], str],
-        sink: gr.components.IOComponent,
+        sink: 'gr.components.Component',
 ) -> None:
     v_args_set = gr.Button(elem_id=id(f'{name}_args_set'))
     v_args = gr.Textbox(elem_id=id(f'{name}_args'))

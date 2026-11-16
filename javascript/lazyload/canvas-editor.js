@@ -83,9 +83,7 @@ let _r = 0;
 
         let container = gradioApp().querySelector(selector);
 
-        const imageElems = container.querySelectorAll('div[data-testid="image"]')
-
-        updateGradioImage(imageElems[0], dt);
+        updateGradioImage(container, dt);
     }
 
     window.getCanvasEditorTabIndex = function () {
@@ -112,11 +110,25 @@ let _r = 0;
         return !(displayValue === 'none');
     }
 
-    window.sendImageToCanvasEditorDirect = function (img, width, height) {
+    function clickCanvasEditorTab() {
+        // Gradio 4.x (and Forge): tab buttons carry aria-controls
+        const btn = document.querySelector('#tabs button[aria-controls="tab_canvas_editor"]');
+        if (btn) {
+            btn.click();
+            return true;
+        }
+        // Fallback (older Gradio / A1111): position-based
         const tabIndex = getCanvasEditorTabIndex();
+        const buttons = gradioApp().querySelector('#tabs')?.querySelectorAll('button');
+        if (buttons && buttons[tabIndex - 1]) {
+            buttons[tabIndex - 1].click();
+            return true;
+        }
+        return false;
+    }
 
-
-        gradioApp().querySelector('#tabs').querySelectorAll('button')[tabIndex - 1].click();
+    window.sendImageToCanvasEditorDirect = function (img, width, height) {
+        clickCanvasEditorTab();
 
         store.activePage?.addElement({
             type: 'image',
@@ -154,7 +166,7 @@ let _r = 0;
         const dt = new DataTransfer();
         dt.items.add(file);
 
-        const selector = type === "txt2img" ? "#txt2img_script_container" : "#img2img_script_container";
+        const tabName = type === "txt2img" ? "txt2img" : "img2img";
 
         if (type === "txt2img") {
             switch_to_txt2img();
@@ -162,7 +174,14 @@ let _r = 0;
             switch_to_img2img();
         }
 
-        let container = gradioApp().querySelector(selector);
+        // Stable Diffusion Forge: ControlNet unit image blocks have deterministic ids
+        const unitBlock = document.getElementById(`${tabName}_controlnet_ControlNet-${index}_input_image`);
+        if (unitBlock) {
+            updateGradioImage(unitBlock, dt);
+            return;
+        }
+
+        let container = gradioApp().querySelector(selector = type === "txt2img" ? "#txt2img_script_container" : "#img2img_script_container");
 
         let element = container.querySelector('#controlnet');
 
@@ -223,14 +242,47 @@ let _r = 0;
 
     };
 
-    function updateGradioImage(element, dt) {
-        let clearButton = element.querySelector("button[aria-label='Clear']");
+    function findImageInput(root) {
+        // Gradio 3/4 standard image component
+        const std = (root.matches && root.matches('div[data-testid="image"]'))
+            ? root
+            : root.querySelector('div[data-testid="image"]');
+        if (std) {
+            const input = std.querySelector("input[type='file']");
+            return {
+                clear: () => {
+                    const b = std.querySelector("button[aria-label='Clear']");
+                    if (b) b.click();
+                },
+                input,
+            };
+        }
+        // Stable Diffusion Forge: custom canvas widget (gr.HTML with .forge-container)
+        const input = root.querySelector("input[type='file']");
+        if (input) {
+            const uuid = (input.id || '').replace(/^imageInput_/, '');
+            const removeBtn = uuid ? document.getElementById(`removeButton_${uuid}`) : null;
+            return {
+                clear: () => {
+                    if (removeBtn) removeBtn.click();
+                },
+                input,
+            };
+        }
+        return null;
+    }
 
-        if (clearButton) {
-            clearButton.click();
+    function updateGradioImage(element, dt) {
+        const target = findImageInput(element);
+
+        if (!target || !target.input) {
+            console.error('[Canvas Editor] No image input found in', element);
+            return;
         }
 
-        const input = element.querySelector("input[type='file']");
+        target.clear();
+
+        const input = target.input;
         input.value = ''
         input.files = dt.files
         input.dispatchEvent(
